@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ポケモンカード 確率計算機</title>
+<meta name="description" content="ポケモンカードの初手ドロー率・サイド落ち確率・スタート確率・残り山札からのドロー確率を簡単計算！" />
+<meta property="og:title" content="ポケモンカード 確率計算機" />
+<meta property="og:description" content="ポケモンカードの初手ドロー率・サイド落ち確率・スタート確率・残り山札からのドロー確率を簡単計算！" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="ポケモンカード 確率計算機" />
+<meta name="twitter:description" content="ポケモンカードの初手ドロー率・サイド落ち確率・スタート確率・残り山札からのドロー確率を簡単計算！" />
+<style>
+  body {
+    font-family: sans-serif;
+    background: #f0f4f8;
+    color: #003366;
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 10px;
+    font-size: 1.1em;
+    line-height: 1.6;
+  }
+  h1 {
+    text-align: center;
+    color: #0055aa;
+    font-size: 1.8em;
+    margin-bottom: 20px;
+  }
+  .tabs {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .tab {
+    padding: 12px 15px;
+    cursor: pointer;
+    border: 1px solid #0055aa;
+    border-bottom: none;
+    background: #cce0ff;
+    color: #003366;
+    border-radius: 8px 8px 0 0;
+    user-select: none;
+    font-size: 0.95em;
+    white-space: nowrap;
+    /* 2列表示の核心的な変更 */
+    flex-basis: calc(50% - 4px); /* 2列にするため、親の幅の50%からgapの半分を引く (左右合計8pxなので片側4px) */
+    box-sizing: border-box; /* パディングとボーダーを幅に含める */
+    text-align: center; /* テキストを中央寄せ */
+  }
+  .tab.active {
+    background: #ffffff;
+    font-weight: bold;
+    border-bottom: 1px solid #ffffff;
+  }
+  .tab-content {
+    border: 1px solid #0055aa;
+    border-radius: 0 8px 8px 8px;
+    background: white;
+    padding: 20px;
+    display: none;
+  }
+  .tab-content.active {
+    display: block;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  input[type="text"] {
+    flex-grow: 1;
+    min-width: 120px;
+    padding: 8px;
+    font-size: 1em;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+  input[type="number"] {
+    width: 70px;
+    padding: 8px;
+    font-size: 1em;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    text-align: center;
+  }
+  select {
+    flex-grow: 1;
+    min-width: 100px;
+    padding: 8px;
+    font-size: 1em;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+
+  .results {
+    border: 1px solid #0055aa;
+    background: #e6f0ff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 25px;
+    font-size: 1.15em;
+    line-height: 1.7;
+  }
+  .results p {
+    margin: 0 0 8px 0;
+  }
+  .results strong {
+    color: #0055aa;
+  }
+  .note {
+    font-size: 0.9em;
+    color: #666;
+    margin-top: 15px;
+  }
+  button.add-row, button.delete-row {
+    background: #0055aa;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.95em;
+    margin-top: 5px;
+  }
+  .delete-row {
+    min-width: 70px;
+  }
+  .label {
+    font-weight: bold;
+    color: #0055aa;
+    min-width: 80px;
+    white-space: nowrap;
+  }
+  .deck-size-row {
+    margin-bottom: 15px;
+  }
+
+  button.count-btn {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 1em;
+    min-width: 30px;
+    box-sizing: border-box;
+  }
+
+  button.count-btn:hover {
+    background: #0056b3;
+  }
+
+  .input-number-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  /* スマートフォンでの調整 (タブと入力グループのみ調整) */
+  @media (max-width: 600px) {
+    .tabs {
+      gap: 8px; /* タブ間の隙間を維持 */
+    }
+    .tab {
+      flex-basis: calc(50% - 4px); /* 2列表示を維持 */
+      font-size: 0.9em; /* スマートフォンではタブの文字を少し小さくして収まりやすく */
+      padding: 10px 12px; /* スマートフォンではタブのパディングを少し調整 */
+      /* スマホでも下線と角丸を維持 */
+      border-bottom: 1px solid #0055aa; 
+      border-radius: 8px; 
+    }
+    .tab.active {
+      border-bottom: 1px solid #ffffff; 
+    }
+
+    /* input-number-groupをスマートフォンでフル幅に */
+    .input-number-group {
+      width: 100%;
+      justify-content: space-between; /* ボタンと入力欄を均等に配置 */
+      gap: 5px; /* ボタンと入力欄の隙間 */
+    }
+    .input-number-group input[type="number"] {
+      flex-grow: 1; /* 入力欄が残りのスペースを埋める */
+      width: auto; /* 固定幅を上書き */
+    }
+    .input-number-group button.count-btn {
+      width: 40px; /* ボタンの幅を固定 */
+      padding: 8px 5px; /* パディングを調整 */
+    }
+
+    /* その他の要素は元の縦並びやデフォルトのFlexbox挙動に戻す */
+    .row {
+      flex-direction: row; /* 基本は横並びに戻す */
+      align-items: center;
+      gap: 10px; /* 元のgapに戻す */
+      flex-wrap: wrap; /* 折り返しは維持 */
+    }
+    /* スマートフォンでinput[type="text"]やselectがフル幅にならないよう調整 */
+    input[type="text"],
+    select {
+        flex-grow: 1; /* スペースがあれば伸びる */
+        width: auto; /* 100%からautoに変更 */
+        margin-bottom: 0; /* マージンを元に戻す */
+    }
+    .label {
+        min-width: 80px; /* 元の最小幅に戻す */
+        width: auto; /* 100%からautoに変更 */
+        margin-bottom: 0; /* マージンを元に戻す */
+    }
+    button.add-row, button.delete-row {
+      width: auto; /* 100%からautoに戻す */
+      margin-top: 5px;
+    }
+  }
+
+  /* マリガン確率の強調表示 */
+  .marigan-prob {
+    color: #0055aa;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+<h1>ポケモンカード 確率計算機</h1>
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('draw')">初手ドロー（7+1枚）</div>
+  <div class="tab" onclick="switchTab('side')">サイド落ち</div>
+  <div class="tab" onclick="switchTab('start')">バトル場スタート</div>
+  <div class="tab" onclick="switchTab('deck')">残り山札からのドロー</div>
+</div>
+
+<div id="draw" class="tab-content active">
+  <div class="deck-size-row">
+    <span class="label">山札枚数:</span>
+    <select id="drawDeckSize" onchange="updatedrawResults()">
+      <option value="60" selected>60枚</option>
+      <option value="40">40枚</option>
+    </select>
+  </div>
+  <div id="drawRows">
+    <div class="row">
+      <input type="text" placeholder="カード名" value="A" oninput="updatedrawResults()">
+      <div class="input-number-group">
+        <button type="button" class="count-btn" onclick="changeCount('drawCardCount0', -1, 'draw')">-</button>
+        <input type="number" value="1" min="1" max="4" id="drawCardCount0" placeholder="枚数" oninput="updatedrawResults()">
+        <button type="button" class="count-btn" onclick="changeCount('drawCardCount0', 1, 'draw')">+</button>
+      </div>
+      <button class="delete-row" onclick="onDeleteRow(this, 'draw')">削除</button>
+    </div>
+  </div>
+  <button class="add-row" onclick="addRow('draw')">行追加</button>
+  <div class="results" id="drawResults"></div>
+</div>
+
+<div id="side" class="tab-content">
+  <div class="deck-size-row">
+    <span class="label">山札枚数:</span>
+    <select id="sideDeckSize" onchange="updateResults('side')">
+      <option value="60" selected>60枚（サイド6枚）</option>
+      <option value="40">40枚（サイド4枚）</option>
+    </select>
+  </div>
+  <div id="sideRows">
+    <div class="row">
+      <input type="text" placeholder="カード名" value="A" oninput="updateResults('side')">
+      <div class="input-number-group">
+        <button type="button" class="count-btn" onclick="changeCount('sideCardCount0', -1, 'side')">-</button>
+        <input type="number" value="1" min="1" max="4" id="sideCardCount0" placeholder="枚数" oninput="updateResults('side')">
+        <button type="button" class="count-btn" onclick="changeCount('sideCardCount0', 1, 'side')">+</button>
+      </div>
+      <button class="delete-row" onclick="onDeleteRow(this, 'side')">削除</button>
+    </div>
+  </div>
+  <button class="add-row" onclick="addRow('side')">行追加</button>
+  <div class="results" id="sideResults"></div>
+</div>
+
+<div id="start" class="tab-content">
+  <div class="deck-size-row">
+    <span class="label">山札枚数:</span>
+    <select id="startDeckSize" onchange="updateStartOptions()">
+      <option value="60" selected>60枚</option>
+      <option value="40">40枚</option>
+    </select>
+  </div>
+  <div class="row">
+    <span class="label">たねポケモン枚数:</span>
+    <div class="input-number-group">
+      <button type="button" class="count-btn" onclick="changeCount('totalBasics', -1, 'start')">-</button>
+      <input type="number" id="totalBasics" value="10" min="1" oninput="updateStartResults()">
+      <button type="button" class="count-btn" onclick="changeCount('totalBasics', 1, 'start')">+</button>
+    </div>
+  </div>
+  <div class="row">
+    <span class="label">最大マリガン回数:</span>
+    <div class="input-number-group">
+      <button type="button" class="count-btn" onclick="changeCount('maxMulligans', -1, 'start')">-</button>
+      <input type="number" id="maxMulligans" value="8" min="0" oninput="updateStartResults()">
+      <button type="button" class="count-btn" onclick="changeCount('maxMulligans', 1, 'start')">+</button>
+    </div>
+  </div>
+  <div id="startRows">
+    <div class="row">
+      <input type="text" placeholder="カード名" value="A" oninput="updateResults('start')">
+      <div class="input-number-group">
+        <button type="button" class="count-btn" onclick="changeCount('startCardCount0', -1, 'start')">-</button>
+        <input type="number" value="1" min="1" max="4" id="startCardCount0" placeholder="枚数" oninput="updateResults('start')">
+        <button type="button" class="count-btn" onclick="changeCount('startCardCount0', 1, 'start')">+</button>
+      </div>
+      <button class="delete-row" onclick="onDeleteRow(this, 'start')">削除</button>
+    </div>
+  </div>
+  <button class="add-row" onclick="addRow('start')">行追加</button>
+  <div class="results" id="startResults"></div>
+</div>
+
+<div id="deck" class="tab-content" role="tabpanel" aria-labelledby="tab-deck">
+    <div class="deck-size-row">
+        <span class="label">山札枚数:</span>
+        <select id="deckSizeSelect" onchange="updateDeckTotalOptions()">
+            <option value="60" selected>60枚</option>
+            <option value="40">40枚</option>
+        </select>
+    </div>
+
+    <div class="row">
+        <span class="label">山札の残り枚数:</span>
+        <div class="input-number-group">
+            <button type="button" class="count-btn" onclick="changeCount('deckTotalSelect', -1, 'deck')">-</button>
+            <input type="number" id="deckTotalSelect" value="50" min="1" oninput="updateDeckResults()">
+            <button type="button" class="count-btn" onclick="changeCount('deckTotalSelect', 1, 'deck')">+</button>
+        </div>
+    </div>
+    <div class="row">
+        <span class="label">引く枚数:</span>
+        <div class="input-number-group">
+            <button type="button" class="count-btn" onclick="changeCount('deckDraw', -1, 'deck')">-</button>
+            <input type="number" id="deckDraw" value="1" min="1" oninput="updateDeckResults()">
+            <button type="button" class="count-btn" onclick="changeCount('deckDraw', 1, 'deck')">+</button>
+        </div>
+    </div>
+    <div id="deckRows">
+      <div class="row">
+        <input type="text" placeholder="カード名" value="A" oninput="updateDeckResults()">
+        <div class="input-number-group">
+          <button type="button" class="count-btn" onclick="changeCount('deckCardCount0', -1, 'deck')">-</button>
+          <input type="number" value="1" min="1" max="4" id="deckCardCount0" placeholder="残り枚数" oninput="updateDeckResults()">
+          <button type="button" class="count-btn" onclick="changeCount('deckCardCount0', 1, 'deck')">+</button>
+        </div>
+        <button class="delete-row" onclick="onDeleteRow(this, 'deck')">削除</button>
+      </div>
+    </div>
+    <button class="add-row" onclick="addRow('deck')">行追加</button>
+    <div class="results" id="deckResults"></div>
+</div>
+
+<script>
+function switchTab(tabName) {
+  const tabs = ['draw', 'side', 'start', 'deck'];
+  tabs.forEach(t => {
+    document.getElementById(t).classList.remove('active');
+  });
+  const tabButtons = document.querySelectorAll('.tab');
+  tabButtons.forEach(button => button.classList.remove('active'));
+
+  document.getElementById(tabName).classList.add('active');
+
+  const tabNames = ['draw', 'side', 'start', 'deck'];
+  tabButtons.forEach((button, idx) => {
+    if (tabNames[idx] === tabName) {
+      button.classList.add('active');
+    }
+  });
+
+  // 各タブに切り替わったときに結果を更新する
+  if (tabName === 'draw') updatedrawResults();
+  else if (tabName === 'side') updateSideResults();
+  else if (tabName === 'start') updateStartOptions();
+  else if (tabName === 'deck') updateDeckTotalOptions();
+}
+
+
+function updateResults(type) {
+  if (type === 'draw') updatedrawResults();
+  else if (type === 'side') updateSideResults();
+  else if (type === 'start') updateStartResults();
+  else if (type === 'deck') updateDeckResults();
+}
+
+/**
+ * 組み合わせの数 C(n, k) を計算します。
+ */
+function choose(n, k) {
+  if (k < 0 || k > n) return 0;
+  if (k === 0 || k === n) return 1;
+  if (k > n / 2) k = n - k;
+  let res = 1;
+  for (let i = 1; i <= k; i++) {
+    res = res * (n - i + 1) / i;
+  }
+  return res;
+}
+
+/**
+ * ハイパージオメトリック分布の確率を計算します。
+ * N: 母集団の総数 (山札の残り枚数)
+ * K: 母集団中の特定要素の総数 (欲しいカードの残り枚数)
+ * n: 抽出数 (引く枚数)
+ * k: 抽出される特定要素の数 (欲しいカードが引ける枚数)
+ */
+function hypergeometric(N, K, n, k) {
+  return choose(K, k) * choose(N - K, n - k) / choose(N, n);
+}
+
+function formatPercent(p) {
+  if (p < 0.000001) return '0.00%未満';
+  return (p * 100).toFixed(2) + '%';
+}
+
+// --- 初手ドロー ---
+function updatedrawResults() {
+  const deckSize = parseInt(document.getElementById('drawDeckSize').value);
+  const container = document.getElementById('drawRows');
+  const cards = [...container.children].map(row => {
+    const name = row.querySelector('input[type="text"]').value.trim();
+    const count = parseInt(row.querySelector('input[type="number"]').value);
+    return { name, count };
+  }).filter(c => c.name !== '');
+
+  const drawCount = 8;
+
+  let resultHtml = '<strong>【初手ドロー確率】</strong><br>';
+  resultHtml += `山札枚数: ${deckSize} 枚<br><br>`;
+
+  let allCardsProbabilitiesOneOrMore = [];
+
+  for (let card of cards) {
+    if (isNaN(card.count) || card.count < 0 || card.count > deckSize) {
+        resultHtml += `<strong>${card.name}:</strong> 不正な枚数入力です。<br><br>`;
+        allCardsProbabilitiesOneOrMore.push(0);
+        continue;
+    }
+    let probOneOrMore = 0;
+    for (let k = 1; k <= card.count; k++) {
+      probOneOrMore += hypergeometric(deckSize, card.count, drawCount, k);
+    }
+    resultHtml += `<strong>${card.name}:</strong><br>  1枚以上引ける確率 (OR): ${formatPercent(probOneOrMore)}<br><br>`;
+    allCardsProbabilitiesOneOrMore.push(probOneOrMore);
+  }
+
+  if (cards.length > 0) {
+    let multiAndProbOneOrMore = 1;
+    let allValid = true;
+    for (const prob of allCardsProbabilitiesOneOrMore) {
+        if (prob === 0 && cards[allCardsProbabilitiesOneOrMore.indexOf(prob)].count > 0) {
+            allValid = false;
+            break;
+        }
+        multiAndProbOneOrMore *= prob;
+    }
+    if (allValid) {
+        resultHtml += `<strong>全て1枚以上引ける確率（AND）: ${formatPercent(multiAndProbOneOrMore)}</strong><br>`;
+    } else {
+        resultHtml += `<strong>全て1枚以上引ける確率（AND）: 計算不可（不正な入力）</strong><br>`;
+    }
+
+    let probAllExact = 1;
+    let totalCardsExact = 0;
+    let possibleExact = true;
+    for (let card of cards) {
+        if (card.count > drawCount || card.count > deckSize) {
+            possibleExact = false;
+            break;
+        }
+        totalCardsExact += card.count;
+    }
+
+    if (totalCardsExact > drawCount || totalCardsExact > deckSize) {
+        possibleExact = false;
+    }
+
+    if (possibleExact && cards.length > 0) {
+        if (totalCardsExact === 0 && cards.length > 0) {
+             resultHtml += `<strong>全て引ける確率（ALL）: 0.00%</strong><br>`;
+        } else {
+            probAllExact = choose(deckSize - totalCardsExact, drawCount - totalCardsExact) / choose(deckSize, drawCount);
+            resultHtml += `<strong>全て引ける確率（ALL）: ${formatPercent(probAllExact)}</strong><br>`;
+        }
+    } else {
+        resultHtml += `<strong>全て引ける確率（ALL）: 0.00%</strong><br>`;
+    }
+  }
+
+
+  document.getElementById('drawResults').innerHTML = resultHtml;
+}
+
+function addRow(tab) {
+  let container;
+  let count;
+  let row;
+
+  if (tab === 'draw') {
+    container = document.getElementById('drawRows');
+    count = container.children.length;
+    const inputId = `drawCardCount${count}`;
+    row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `
+      <input type="text" placeholder="カード名" value="${String.fromCharCode(65 + count)}" oninput="updatedrawResults()">
+      <div class="input-number-group"> <button type="button" class="count-btn" onclick="changeCount('${inputId}', -1, 'draw')">-</button>
+        <input type="number" value="1" min="1" max="4" id="${inputId}" placeholder="枚数" oninput="updatedrawResults()">
+        <button type="button" class="count-btn" onclick="changeCount('${inputId}', 1, 'draw')">+</button>
+      </div>
+      <button class="delete-row" onclick="onDeleteRow(this, '${tab}')">削除</button>
+    `;
+    container.appendChild(row);
+    updatedrawResults();
+  } else if (tab === 'side') {
+    container = document.getElementById('sideRows');
+    count = container.children.length;
+    const inputId = `sideCardCount${count}`;
+    row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `
+      <input type="text" placeholder="カード名" value="${String.fromCharCode(65 + count)}" oninput="updateResults('${tab}')">
+      <div class="input-number-group">
+        <button type="button" class="count-btn" onclick="changeCount('${inputId}', -1, 'side')">-</button>
+        <input type="number" value="1" min="1" max="4" id="${inputId}" placeholder="枚数" oninput="updateResults('${tab}')">
+        <button type="button" class="count-btn" onclick="changeCount('${inputId}', 1, 'side')">+</button>
+      </div>
+      <button class="delete-row" onclick="onDeleteRow(this, '${tab}')">削除</button>
+    `;
+    container.appendChild(row);
+    updateResults(tab);
+  } else if (tab === 'start') {
+    container = document.getElementById('startRows');
+    count = container.children.length;
+    const inputId = `startCardCount${count}`;
+    row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `
+      <input type="text" placeholder="カード名" value="${String.fromCharCode(65 + count)}" oninput="updateResults('${tab}')">
+      <div class="input-number-group">
+        <button type="button" class="count-btn" onclick="changeCount('${inputId}', -1, 'start')">-</button>
+        <input type="number" value="1" min="1" max="4" id="${inputId}" placeholder="枚数" oninput="updateResults('${tab}')">
+        <button type="button" class="count-btn" onclick="changeCount('${inputId}', 1, 'start')">+</button>
+      </div>
+      <button class="delete-row" onclick="onDeleteRow(this, '${tab}')">削除</button>
+    `;
+    container.appendChild(row);
+    updateResults(tab);
+  } else if (tab === 'deck') {
+    container = document.getElementById('deckRows');
+    count = container.children.length;
+    const inputId = `deckCardCount${count}`;
+    row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `
+      <input type="text" placeholder="カード名" value="${String.fromCharCode(65 + count)}" oninput="updateDeckResults()">
+      <div class="input-number-group">
+        <button type="button" class="count-btn" onclick="changeCount('${inputId}', -1, 'deck')">-</button>
+        <input type="number" value="1" min="1" max="4" id="${inputId}" placeholder="残り枚数" oninput="updateDeckResults()">
+        <button type="button" class="count-btn" onclick="changeCount('${inputId}', 1, 'deck')">+</button>
+      </div>
+      <button class="delete-row" onclick="onDeleteRow(this, '${tab}')">削除</button>
+    `;
+    container.appendChild(row);
+    updateDeckResults();
+  }
+}
+
+/**
+ * 数値入力欄の値を増減させ、関連する結果を更新します。
+ * @param {string} inputId - 変更するinput要素のID
+ * @param {number} delta - 増減させる値 (-1または1)
+ * @param {string} type - 現在のタブの種類 ('draw', 'side', 'start', 'deck')
+*/
+function changeCount(inputId, delta, type) {
+  const inputElement = document.getElementById(inputId);
+  if (inputElement) {
+    let currentValue = parseInt(inputElement.value);
+    let newValue = currentValue + delta;
+    const min = parseInt(inputElement.min);
+    const max = parseInt(inputElement.max);
+
+    if (isNaN(min)) {
+        inputElement.min = 0;
+        min = 0;
+    }
+    if (isNaN(max)) {
+        inputElement.max = 999;
+        max = 999;
+    }
+
+    if (newValue >= min && newValue <= max) {
+      inputElement.value = newValue;
+    } else if (newValue < min) {
+        inputElement.value = min;
+    } else if (newValue > max) {
+        inputElement.value = max;
+    }
+
+    updateResults(type);
+  }
+}
+
+// 行削除
+function onDeleteRow(button, tab) {
+  const row = button.parentNode;
+  row.parentNode.removeChild(row);
+  updateResults(tab);
+}
+
+// --- サイド落ち確率 ---
+function updateSideResults() {
+  const deckSizeSelect = document.getElementById('sideDeckSize');
+  const deckSize = parseInt(deckSizeSelect.value);
+  const sideCount = (deckSize === 60) ? 6 : 4;
+
+  const container = document.getElementById('sideRows');
+  const cards = [...container.children].map(row => {
+    const name = row.querySelector('input[type="text"]').value.trim();
+    const count = parseInt(row.querySelector('input[type="number"]').value);
+    return { name, count };
+  }).filter(c => c.name !== '');
+
+  let resultHtml = '<strong>【サイド落ち確率】</strong><br>';
+  resultHtml += `山札枚数: ${deckSize} 枚 (サイド ${sideCount} 枚)<br><br>`;
+
+  let overallProbOneOrMore = 0;
+
+  let allCardsProbExact = 1;
+
+  let totalExactCount = 0;
+
+  if (cards.length > 0) {
+    let probNoneSide = 1;
+    
+    let totalCardsNotDesired = deckSize;
+    for(let card of cards) {
+        if (isNaN(card.count) || card.count <= 0 || card.count > deckSize) {
+            probNoneSide = 0;
+            break;
+        }
+        totalCardsNotDesired -= card.count;
+    }
+
+    if (totalCardsNotDesired >= sideCount && probNoneSide !== 0) {
+      probNoneSide = choose(totalCardsNotDesired, sideCount) / choose(deckSize, sideCount);
+    } else {
+        probNoneSide = 0;
+    }
+    
+    overallProbOneOrMore = (probNoneSide >= 0 && probNoneSide <= 1) ? (1 - probNoneSide) : 0;
+
+    for (let card of cards) {
+        if (isNaN(card.count) || card.count <= 0 || card.count > deckSize) {
+            resultHtml += `<strong>${card.name}:</strong> 不正な枚数入力です。<br><br>`;
+            continue;
+        }
+        const probCardSideOneOrMore = 1 - hypergeometric(deckSize, card.count, sideCount, 0);
+        resultHtml += `<strong>${card.name}:</strong><br>  1枚以上サイドに落ちる確率: ${formatPercent(probCardSideOneOrMore)}<br><br>`;
+    }
+
+    let possibleAllExact = true;
+    for (let card of cards) {
+      if (isNaN(card.count) || card.count <= 0 || card.count > sideCount || card.count > deckSize) {
+        possibleAllExact = false;
+        break;
+      }
+      totalExactCount += card.count;
+    }
+
+    if (totalExactCount > sideCount || totalExactCount > deckSize) {
+        possibleAllExact = false;
+    }
+
+    if (possibleAllExact && cards.length > 0) {
+      allCardsProbExact = 1;
+      
+      const numSpecifiedInSide = totalExactCount;
+      const numOtherInSide = sideCount - numSpecifiedInSide;
+      const numOtherInDeck = deckSize - totalExactCount;
+
+      if (numOtherInDeck >= numOtherInSide && numOtherInSide >= 0) {
+          allCardsProbExact = (choose(totalExactCount, numSpecifiedInSide) * choose(numOtherInDeck, numOtherInSide)) / choose(deckSize, sideCount);
+      } else {
+          allCardsProbExact = 0;
+      }
+      
+    } else {
+        allCardsProbExact = 0;
+    }
+
+    resultHtml += `<strong>いずれか1枚でもサイドに落ちる確率 (OR): ${formatPercent(overallProbOneOrMore)}</strong><br>`;
+    resultHtml += `<strong>全てサイドに落ちる確率 (ALL): ${formatPercent(allCardsProbExact)}</strong><br>`;
+
+  } else {
+    resultHtml += 'カードを入力してください。<br>';
+  }
+  document.getElementById('sideResults').innerHTML = resultHtml;
+}
+
+
+// --- バトル場スタート確率 ---
+function updateStartOptions() {
+  const deckSize = parseInt(document.getElementById('startDeckSize').value);
+  const totalBasicsInput = document.getElementById('totalBasics');
+
+  totalBasicsInput.max = deckSize;
+  if (parseInt(totalBasicsInput.value) > deckSize) {
+    totalBasicsInput.value = deckSize;
+  }
+  if (parseInt(totalBasicsInput.value) === 0 || isNaN(parseInt(totalBasicsInput.value))) {
+    totalBasicsInput.value = Math.min(10, deckSize);
+  }
+
+  updateStartResults();
+}
+
+// Fisher-Yatesシャッフルアルゴリズム
+function shuffle(array) {
+  let currentIndex = array.length, randomIndex;
+  while (currentIndex !== 0) {
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+    [array[currentIndex], array[randomIndex]] = [
+      array[randomIndex], array[currentIndex]];
+  }
+  return array;
+}
+
+function updateStartResults() {
+  const deckSize = parseInt(document.getElementById('startDeckSize').value);
+  const totalBasics = parseInt(document.getElementById('totalBasics').value);
+  const maxMulligans = parseInt(document.getElementById('maxMulligans').value);
+
+  const numSimulations = 100000;
+
+  const drawCount = 7;
+
+  const container = document.getElementById('startRows');
+  const desiredBasicCards = [...container.children].map(row => {
+    const name = row.querySelector('input[type="text"]').value.trim();
+    const count = parseInt(row.querySelector('input[type="number"]').value);
+    return { name, count };
+  }).filter(c => c.name !== '');
+
+  let resultHtml = '<strong>【バトル場スタート確率】</strong><br>';
+  resultHtml += `山札枚数: ${deckSize} 枚<br>`;
+  resultHtml += `たねポケモン合計: ${totalBasics} 枚<br><br>`;
+
+  let totalDesiredBasicCount = 0;
+  for (let card of desiredBasicCards) {
+    if (isNaN(card.count) || card.count < 0 || card.count > 4 || card.count > deckSize) {
+      resultHtml += `<strong>${card.name}:</strong> 不正な枚数入力です。<br><br>`;
+      document.getElementById('startResults').innerHTML = resultHtml;
+      return;
+    }
+    totalDesiredBasicCount += card.count;
+  }
+
+  if (totalDesiredBasicCount > totalBasics) {
+    resultHtml += `<p style="color: red;"><strong>エラー: 指定したたねポケモンの合計枚数が、山札全体のたねポケモン枚数を超えています。</strong></p>`;
+    document.getElementById('startResults').innerHTML = resultHtml;
+    return;
+  }
+  if (totalBasics > deckSize) {
+    resultHtml += `<p style="color: red;"><strong>エラー: 山札全体のたねポケモン枚数が、山札の総枚数を超えています。</strong></p>`;
+    document.getElementById('startResults').innerHTML = resultHtml;
+    return;
+  }
+  if (drawCount > deckSize) {
+    resultHtml += `<p style="color: red;"><strong>エラー: 引く枚数が山札の総枚数を超えています。</strong></p>`;
+    document.getElementById('startResults').innerHTML = resultHtml;
+    return;
+  }
+  if (maxMulligans < 0 || isNaN(maxMulligans)) {
+    resultHtml += `<p style="color: red;"><strong>エラー: 最大マリガン回数は0以上である必要があります。</strong></p>`;
+    document.getElementById('startResults').innerHTML = resultHtml;
+    return;
+  }
+
+  let successfulStarts = 0;
+  let mulliganOccurrences = 0;
+  let totalGameStarts = 0;
+
+  for (let i = 0; i < numSimulations; i++) {
+    let deck = [];
+    for (let j = 0; j < totalDesiredBasicCount; j++) {
+      deck.push('desired_basic');
+    }
+    for (let j = 0; j < (totalBasics - totalDesiredBasicCount); j++) {
+      deck.push('other_basic');
+    }
+    for (let j = 0; j < (deckSize - totalBasics); j++) {
+      deck.push('non_basic');
+    }
+
+    let currentMulligans = 0;
+    
+    while (currentMulligans <= maxMulligans) {
+      shuffle(deck);
+
+      let hand = deck.slice(0, drawCount);
+
+      let hasBasicInHand = false;
+      let hasDesiredBasicInHand = false;
+
+      for (let card of hand) {
+        if (card === 'desired_basic' || card === 'other_basic') {
+          hasBasicInHand = true;
+        }
+        if (card === 'desired_basic') {
+          hasDesiredBasicInHand = true;
+        }
+      }
+
+      if (hasBasicInHand) {
+        totalGameStarts++;
+        if (currentMulligans > 0) {
+            mulliganOccurrences++;
+        }
+        if (hasDesiredBasicInHand) {
+          successfulStarts++;
+        }
+        break;
+      } else {
+        if (currentMulligans === maxMulligans) {
+          break;
+        }
+        currentMulligans++;
+      }
+    }
+  }
+
+  const probStartSpecificBasic = (totalGameStarts > 0) ? (successfulStarts / totalGameStarts) : 0;
+  const probMulliganOverall = mulliganOccurrences / numSimulations;
+
+  resultHtml += `<strong>【いずれかでバトル場スタートできる確率】: ${formatPercent(probStartSpecificBasic)}</strong><br><br>`;
+  resultHtml += `<span class="marigan-prob">【マリガンが発生する確率】: ${formatPercent(probMulliganOverall)}</span><br>`;
+
+  document.getElementById('startResults').innerHTML = resultHtml;
+}
+
+
+// --- 残り山札からのドロー ---
+function updateDeckTotalOptions() {
+  const deckSize = parseInt(document.getElementById('deckSizeSelect').value);
+  const deckTotalInput = document.getElementById('deckTotalSelect');
+  
+  deckTotalInput.max = deckSize;
+  if (parseInt(deckTotalInput.value) > deckSize) {
+    deckTotalInput.value = deckSize;
+  }
+  if (parseInt(deckTotalInput.value) === 0 || isNaN(parseInt(deckTotalInput.value))) {
+    deckTotalInput.value = Math.min(50, deckSize);
+  }
+
+  updateDeckResults();
+}
+
+function updateDeckResults() {
+  const currentDeckSize = parseInt(document.getElementById('deckTotalSelect').value);
+  const drawCount = parseInt(document.getElementById('deckDraw').value);
+
+  const container = document.getElementById('deckRows');
+  const cards = [...container.children].map(row => {
+    const name = row.querySelector('input[type="text"]').value.trim();
+    const count = parseInt(row.querySelector('input[type="number"]').value);
+    return { name, count };
+  }).filter(c => c.name !== '');
+
+  let resultHtml = '<strong>【残り山札からのドロー確率】</strong><br>';
+  resultHtml += `山札の残り: ${currentDeckSize} 枚<br>`;
+  resultHtml += `引く枚数: ${drawCount} 枚<br><br>`;
+
+  if (isNaN(currentDeckSize) || currentDeckSize <= 0) {
+    resultHtml += "山札の残り枚数は1枚以上である必要があります。<br>";
+    document.getElementById('deckResults').innerHTML = resultHtml;
+    return;
+  }
+  if (isNaN(drawCount) || drawCount <= 0) {
+    resultHtml += "引く枚数は1枚以上である必要があります。<br>";
+    document.getElementById('deckResults').innerHTML = resultHtml;
+    return;
+  }
+  if (drawCount > currentDeckSize) {
+    resultHtml += "引く枚数が山札の残り枚数を超えています。<br>";
+    document.getElementById('deckResults').innerHTML = resultHtml;
+    return;
+  }
+
+  let allCardsProbabilitiesOneOrMore = [];
+
+  for (let card of cards) {
+    if (isNaN(card.count) || card.count < 0 || card.count > currentDeckSize) {
+        resultHtml += `<strong>${card.name}:</strong> 不正な残り枚数入力です。<br><br>`;
+        allCardsProbabilitiesOneOrMore.push(0);
+        continue;
+    }
+    let probOneOrMore = 0;
+    for (let k = 1; k <= card.count; k++) {
+      probOneOrMore += hypergeometric(currentDeckSize, card.count, drawCount, k);
+    }
+    resultHtml += `<strong>${card.name}:</strong><br>  1枚以上引ける確率 (OR): ${formatPercent(probOneOrMore)}<br><br>`;
+    allCardsProbabilitiesOneOrMore.push(probOneOrMore);
+  }
+
+  if (cards.length > 0) {
+    let multiAndProbOneOrMore = 1;
+    let allValid = true;
+    for (const prob of allCardsProbabilitiesOneOrMore) {
+        if (prob === 0 && cards[allCardsProbabilitiesOneOrMore.indexOf(prob)].count > 0) {
+            allValid = false;
+            break;
+        }
+        multiAndProbOneOrMore *= prob;
+    }
+    if (allValid) {
+        resultHtml += `<strong>全て1枚以上引ける確率（AND）: ${formatPercent(multiAndProbOneOrMore)}</strong><br>`;
+    } else {
+        resultHtml += `<strong>全て1枚以上引ける確率（AND）: 計算不可（不正な入力）</strong><br>`;
+    }
+
+    let probAllExact = 1;
+    let totalCardsExact = 0;
+    let possibleExact = true;
+    for (let card of cards) {
+        if (card.count > drawCount || card.count > currentDeckSize) {
+            possibleExact = false;
+            break;
+        }
+        totalCardsExact += card.count;
+    }
+
+    if (totalCardsExact > drawCount || totalCardsExact > currentDeckSize) {
+        possibleExact = false;
+    }
+
+    if (possibleExact && cards.length > 0) {
+        if (totalCardsExact === 0 && cards.length > 0) {
+             resultHtml += `<strong>全て引ける確率（ALL）: 0.00%</strong><br>`;
+        } else {
+            probAllExact = choose(currentDeckSize - totalCardsExact, drawCount - totalCardsExact) / choose(currentDeckSize, drawCount);
+            resultHtml += `<strong>全て引ける確率（ALL）: ${formatPercent(probAllExact)}</strong><br>`;
+        }
+    } else {
+        resultHtml += `<strong>全て引ける確率（ALL）: 0.00%</strong><br>`;
+    }
+  }
+
+  document.getElementById('deckResults').innerHTML = resultHtml;
+}
+
+// 初期表示時に各タブの計算結果を更新
+document.addEventListener('DOMContentLoaded', () => {
+  updateResults('draw');
+  updateResults('side');
+  updateStartOptions();
+  updateDeckTotalOptions();
+});
+
+</script>
+</body>
+</html>
